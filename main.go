@@ -5,7 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"os"
 
+	"hack/barns"
 	"hack/horses"
 	"hack/riders"
 	"hack/rides"
@@ -13,19 +15,59 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
+	"github.com/joho/godotenv"
 )
 
 func setup() error {
+	godotenv.Load()
 	db, err := sql.Open("mysql", "tcp(localhost:3306)/?parseTime=true")
 	if err != nil {
 		return errors.New("Failed to connect to database: " + err.Error())
 	}
 	app := fiber.New()
 	app.Use(logger.New())
-	// TODO: add middleware for api key authentication
+	app.Use(func(c *fiber.Ctx) error {
+		providedKey := c.Get("x-api-key")
+		expectedKey := os.Getenv("API_KEY")
+		if providedKey != expectedKey {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+				"error": "invalid api key",
+			})
+		}
+		return c.Next()
+	})
 
 	app.Get("/", func(c *fiber.Ctx) error {
 		return c.SendString("Hello, world!")
+	})
+
+	app.Post("/barn", func(c *fiber.Ctx) error {
+		logger := c.Context().Logger()
+		type barnRequest struct {
+			Name   string `json:"name"`
+			UserID string `json:"user_id"`
+		}
+		var req barnRequest
+		err := c.BodyParser(&req)
+		if err != nil {
+			msg := "Failed to parse request body: " + err.Error()
+			logger.Printf(msg)
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error": msg,
+			})
+		}
+		barn := barns.Barn{
+			Name: req.Name,
+		}
+		err = barn.Save(req.UserID, db)
+		if err != nil {
+			msg := "Failed to save barn: " + err.Error()
+			logger.Printf(msg)
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": msg,
+			})
+		}
+		return c.JSON(barn)
 	})
 
 	app.Post("/horse", func(c *fiber.Ctx) error {
