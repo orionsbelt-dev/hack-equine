@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 
 	"hack/barns"
 	"hack/horses"
@@ -67,7 +68,9 @@ func setup() error {
 				"error": msg,
 			})
 		}
-		return c.JSON(barn)
+		return c.JSON(fiber.Map{
+			"barn": barn,
+		})
 	})
 
 	app.Get("/user/:userID/barns", func(c *fiber.Ctx) error {
@@ -81,7 +84,32 @@ func setup() error {
 				"error": msg,
 			})
 		}
-		return c.JSON(barns)
+		return c.JSON(fiber.Map{
+			"barns": barns,
+		})
+	})
+
+	app.Get("/barn/:barnID/horses", func(c *fiber.Ctx) error {
+		logger := c.Context().Logger()
+		barnID, err := strconv.ParseInt(c.Params("barnID"), 10, 64)
+		if err != nil {
+			msg := "Failed to parse barn ID: " + err.Error()
+			logger.Printf(msg)
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error": msg,
+			})
+		}
+		horses, err := horses.GetHorsesByBarnID(barnID, db)
+		if err != nil {
+			msg := "Failed to get horses: " + err.Error()
+			logger.Printf(msg)
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": msg,
+			})
+		}
+		return c.JSON(fiber.Map{
+			"horses": horses,
+		})
 	})
 
 	app.Post("/horse", func(c *fiber.Ctx) error {

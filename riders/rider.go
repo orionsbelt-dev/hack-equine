@@ -6,13 +6,14 @@ import (
 )
 
 type Rider struct {
-	ID   int64  `json:"id"`
-	Name string `json:"name"`
+	ID     int64  `json:"id"`
+	Name   string `json:"name"`
+	BarnID int    `json:"barn_id"`
 }
 
 func (r *Rider) Save(db *sql.DB) error {
-	query := "insert into riders (name) values (?)"
-	result, err := db.Exec(query, r.Name)
+	query := "insert into riders (name, barn_id) values (?, ?)"
+	result, err := db.Exec(query, r.Name, r.BarnID)
 	if err != nil {
 		return errors.New("failed to insert rider into database: " + err.Error())
 	}
@@ -24,7 +25,7 @@ func (r *Rider) Save(db *sql.DB) error {
 }
 
 func GetRiders(db *sql.DB) ([]*Rider, error) {
-	query := "select id, name from riders"
+	query := "select id, name, barn_id from riders"
 	rows, err := db.Query(query)
 	if err != nil {
 		return nil, errors.New("failed to select riders from database: " + err.Error())
@@ -33,7 +34,7 @@ func GetRiders(db *sql.DB) ([]*Rider, error) {
 	var riders []*Rider
 	for rows.Next() {
 		var r Rider
-		err := rows.Scan(&r.ID, &r.Name)
+		err := rows.Scan(&r.ID, &r.Name, &r.BarnID)
 		if err != nil {
 			return nil, errors.New("failed to scan row: " + err.Error())
 		}
