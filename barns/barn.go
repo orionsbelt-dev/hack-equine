@@ -50,6 +50,25 @@ func (b *Barn) Save(userID string, db *sql.DB) error {
 	return nil
 }
 
+func GetBarnsByUserID(userID string, db *sql.DB) ([]*Barn, error) {
+	query := "select b.id, b.name from barns b join barn_owners bo on b.id = bo.barn_id join owners o on bo.owner_id = o.id where o.user_id = ?"
+	rows, err := db.Query(query, userID)
+	if err != nil {
+		return nil, errors.New("failed to select barns from database: " + err.Error())
+	}
+	defer rows.Close()
+	var barns []*Barn
+	for rows.Next() {
+		var b Barn
+		err := rows.Scan(&b.ID, &b.Name)
+		if err != nil {
+			return nil, errors.New("failed to scan row: " + err.Error())
+		}
+		barns = append(barns, &b)
+	}
+	return barns, nil
+}
+
 func HandleOwner(userID string, db *sql.DB) (*Owner, error) {
 	var owner Owner
 	owner.UserID = userID

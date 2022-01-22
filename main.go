@@ -70,6 +70,20 @@ func setup() error {
 		return c.JSON(barn)
 	})
 
+	app.Get("/user/:userID/barns", func(c *fiber.Ctx) error {
+		logger := c.Context().Logger()
+		userID := c.Params("userID")
+		barns, err := barns.GetBarnsByUserID(userID, db)
+		if err != nil {
+			msg := "Failed to get barns: " + err.Error()
+			logger.Printf(msg)
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": msg,
+			})
+		}
+		return c.JSON(barns)
+	})
+
 	app.Post("/horse", func(c *fiber.Ctx) error {
 		var horse horses.Horse
 		err := c.BodyParser(&horse)
