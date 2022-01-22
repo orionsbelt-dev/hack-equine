@@ -8,7 +8,7 @@ import (
 type Rider struct {
 	ID     int64  `json:"id"`
 	Name   string `json:"name"`
-	BarnID int    `json:"barn_id"`
+	BarnID int64  `json:"barn_id"`
 }
 
 func (r *Rider) Save(db *sql.DB) error {
@@ -22,6 +22,26 @@ func (r *Rider) Save(db *sql.DB) error {
 		return errors.New("failed to get last insert ID: " + err.Error())
 	}
 	return nil
+}
+
+func GetRidersByBarnID(barnID int64, db *sql.DB) ([]*Rider, error) {
+	query := "select id, name from riders where barn_id = ?"
+	rows, err := db.Query(query, barnID)
+	if err != nil {
+		return nil, errors.New("failed to select riders from database: " + err.Error())
+	}
+	defer rows.Close()
+	var riders []*Rider
+	for rows.Next() {
+		var rider Rider
+		err = rows.Scan(&rider.ID, &rider.Name)
+		if err != nil {
+			return nil, errors.New("failed to scan row: " + err.Error())
+		}
+		rider.BarnID = barnID
+		riders = append(riders, &rider)
+	}
+	return riders, nil
 }
 
 func GetRiders(db *sql.DB) ([]*Rider, error) {

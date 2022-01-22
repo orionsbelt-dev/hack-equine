@@ -112,6 +112,29 @@ func setup() error {
 		})
 	})
 
+	app.Get("/barn/:barnID/riders", func(c *fiber.Ctx) error {
+		logger := c.Context().Logger()
+		barnID, err := strconv.ParseInt(c.Params("barnID"), 10, 64)
+		if err != nil {
+			msg := "Failed to parse barn ID: " + err.Error()
+			logger.Printf(msg)
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error": msg,
+			})
+		}
+		riders, err := riders.GetRidersByBarnID(barnID, db)
+		if err != nil {
+			msg := "Failed to get riders: " + err.Error()
+			logger.Printf(msg)
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": msg,
+			})
+		}
+		return c.JSON(fiber.Map{
+			"riders": riders,
+		})
+	})
+
 	app.Post("/horse", func(c *fiber.Ctx) error {
 		var horse horses.Horse
 		err := c.BodyParser(&horse)
