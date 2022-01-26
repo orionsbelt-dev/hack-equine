@@ -220,6 +220,25 @@ func setup() error {
 		})
 	})
 
+	app.Post("/schedule", func(c *fiber.Ctx) error {
+		var schedule rides.Schedule
+		err := c.BodyParser(&schedule)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error": "Failed to parse schedule: " + err.Error(),
+			})
+		}
+		err = schedule.Save(db)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": "Failed to save schedule: " + err.Error(),
+			})
+		}
+		return c.JSON(fiber.Map{
+			"success": true,
+		})
+	})
+
 	return app.Listen(":8000")
 }
 
