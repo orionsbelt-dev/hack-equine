@@ -16,10 +16,12 @@ func (d *Date) UnmarshalJSON(data []byte) error {
 	if err != nil {
 		return errors.New("failed to unmarshal date: " + err.Error())
 	}
-	parsedTime, err := time.Parse("1/2/2006", s)
-	if err != nil {
-		return errors.New("failed to parse time: " + err.Error())
+	if len(s) > 0 {
+		parsedTime, err := time.Parse("1/2/2006", s)
+		if err != nil {
+			return errors.New("failed to parse time: " + err.Error())
+		}
+		*d = Date{parsedTime}
 	}
-	*d = Date{parsedTime}
 	return nil
 }

@@ -42,7 +42,7 @@ type Schedule struct {
 	HorseID   int64      `json:"horse_id"`
 	RiderID   int64      `json:"rider_id"`
 	StartDate utils.Date `json:"start_date"`
-	EndDate   utils.Date `json:"end_date"`
+	EndDate   utils.Date `json:"end_date,omitempty"`
 	Sunday    bool       `json:"sunday"`
 	Monday    bool       `json:"monday"`
 	Tuesday   bool       `json:"tuesday"`
