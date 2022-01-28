@@ -7,11 +7,13 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"time"
 
 	"hack/barns"
 	"hack/horses"
 	"hack/riders"
 	"hack/rides"
+	"hack/utils"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gofiber/fiber/v2"
@@ -236,6 +238,37 @@ func setup() error {
 		}
 		return c.JSON(fiber.Map{
 			"success": true,
+		})
+	})
+
+	app.Get("/barn/:barnID/rides/:date", func(c *fiber.Ctx) error {
+		logger := c.Context().Logger()
+		date, err := time.Parse("2006-01-02", c.Params("date"))
+		if err != nil {
+			msg := "Failed to parse date: " + err.Error()
+			logger.Printf(msg)
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error": msg,
+			})
+		}
+		barnID, err := strconv.ParseInt(c.Params("barnID"), 10, 64)
+		if err != nil {
+			msg := "Failed to parse barn ID: " + err.Error()
+			logger.Printf(msg)
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error": msg,
+			})
+		}
+		rides, err := rides.GetScheduleByDay(barnID, utils.Date{Time: date}, db)
+		if err != nil {
+			msg := "Failed to get ride schedule: " + err.Error()
+			logger.Printf(msg)
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": msg,
+			})
+		}
+		return c.JSON(fiber.Map{
+			"rides": rides,
 		})
 	})
 
