@@ -27,6 +27,10 @@ const (
 
 func (r *Ride) Save(db *sql.DB) error {
 	query := "insert into rides (horse_id, rider_id, date, notes, status) values (?, ?, ?, ?, ?)"
+	// set default status
+	if r.Status == "" {
+		r.Status = Scheduled
+	}
 	result, err := db.Exec(query, r.HorseID, r.RiderID, r.Date.Format("2006-01-02"), r.Notes, r.Status)
 	if err != nil {
 		return errors.New("failed to insert ride into database: " + err.Error())
@@ -98,7 +102,7 @@ func (s *Schedule) Save(db *sql.DB) error {
 
 func GetScheduleByDay(barnID int64, date utils.Date, db *sql.DB) ([]*Ride, error) {
 	var rides []*Ride
-	ridesQuery := "select horse_id, rider_id, status from rides where date = ? and horse_id in (select id from horses where barn_id = ?) and rider_id in (select id from riders where barn_id = ?)"
+	ridesQuery := "select id, horse_id, rider_id, notes, status from rides where date = ? and horse_id in (select id from horses where barn_id = ?) and rider_id in (select id from riders where barn_id = ?)"
 	mysqlDate := date.Format("2006-01-02")
 	rideRows, err := db.Query(ridesQuery, mysqlDate, barnID, barnID)
 	if err != nil {
@@ -107,7 +111,7 @@ func GetScheduleByDay(barnID int64, date utils.Date, db *sql.DB) ([]*Ride, error
 	defer rideRows.Close()
 	for rideRows.Next() {
 		var r Ride
-		err := rideRows.Scan(&r.HorseID, &r.RiderID, &r.Status)
+		err := rideRows.Scan(&r.ID, &r.HorseID, &r.RiderID, &r.Notes, &r.Status)
 		if err != nil {
 			return nil, errors.New("failed to scan row: " + err.Error())
 		}
