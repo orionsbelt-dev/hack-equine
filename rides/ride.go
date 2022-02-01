@@ -13,6 +13,7 @@ type Ride struct {
 	HorseID int64      `json:"horse_id"`
 	RiderID int64      `json:"rider_id"`
 	Date    utils.Date `json:"date"`
+	Time    utils.Time `json:"time"`
 	Notes   string     `json:"notes"`
 	Status  Status     `json:"status"`
 }
@@ -26,12 +27,12 @@ const (
 )
 
 func (r *Ride) Save(db *sql.DB) error {
-	query := "insert into rides (horse_id, rider_id, date, notes, status) values (?, ?, ?, ?, ?)"
+	query := "insert into rides (horse_id, rider_id, date, time, notes, status) values (?, ?, ?, ?, ?, ?)"
 	// set default status
 	if r.Status == "" {
 		r.Status = Scheduled
 	}
-	result, err := db.Exec(query, r.HorseID, r.RiderID, r.Date.Format("2006-01-02"), r.Notes, r.Status)
+	result, err := db.Exec(query, r.HorseID, r.RiderID, r.Date.Format("2006-01-02"), r.Time.Format("15:04:05"), r.Notes, r.Status)
 	if err != nil {
 		return errors.New("failed to insert ride into database: " + err.Error())
 	}

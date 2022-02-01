@@ -207,14 +207,18 @@ func setup() error {
 		var ride rides.Ride
 		err := c.BodyParser(&ride)
 		if err != nil {
+			msg := "Failed to parse ride: " + err.Error()
+			fmt.Println(msg)
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-				"error": "Failed to parse ride: " + err.Error(),
+				"error": msg,
 			})
 		}
 		err = ride.Save(db)
 		if err != nil {
+			msg := "Failed to save ride: " + err.Error()
+			fmt.Println(msg)
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-				"error": "Failed to save ride: " + err.Error(),
+				"error": msg,
 			})
 		}
 		return c.JSON(fiber.Map{
