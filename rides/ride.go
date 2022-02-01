@@ -13,7 +13,7 @@ type Ride struct {
 	HorseID int64      `json:"horse_id"`
 	RiderID int64      `json:"rider_id"`
 	Date    utils.Date `json:"date"`
-	Time    utils.Time `json:"time"`
+	Time    utils.Time `json:"time,omitempty"`
 	Notes   string     `json:"notes"`
 	Status  Status     `json:"status"`
 }
@@ -48,6 +48,7 @@ type Schedule struct {
 	RiderID   int64      `json:"rider_id"`
 	StartDate utils.Date `json:"start_date"`
 	EndDate   utils.Date `json:"end_date,omitempty"`
+	Time      utils.Time `json:"time,omitempty"`
 	Sunday    bool       `json:"sunday"`
 	Monday    bool       `json:"monday"`
 	Tuesday   bool       `json:"tuesday"`
@@ -80,9 +81,9 @@ func (s *Schedule) Save(db *sql.DB) error {
 	if s.Saturday {
 		days = append(days, time.Saturday)
 	}
-	query := "insert into schedules (horse_id, rider_id, start_date, day) values (?, ?, ?, ?)"
+	query := "insert into schedules (horse_id, rider_id, start_date, time, day) values (?, ?, ?, ?, ?)"
 	for _, day := range days {
-		result, err := db.Exec(query, s.HorseID, s.RiderID, s.StartDate.Format("2006-01-02"), day)
+		result, err := db.Exec(query, s.HorseID, s.RiderID, s.StartDate.Format("2006-01-02"), s.Time.Format("15:04:05"), day)
 		if err != nil {
 			return errors.New("failed to insert schedule into database: " + err.Error())
 		}
