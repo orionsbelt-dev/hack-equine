@@ -114,7 +114,7 @@ type RideDetail struct {
 
 func GetScheduleByDay(barnID int64, date utils.Date, db *sql.DB) ([]*RideDetail, error) {
 	var rides []*RideDetail
-	ridesQuery := "select id, horse_id, (select name from horses where id = horse_id) horse_name, rider_id, (select name from riders where id = rider_id) rider_name, time, notes, status from rides where date = ? and horse_id in (select id from horses where barn_id = ?) and rider_id in (select id from riders where barn_id = ?)"
+	ridesQuery := "select id, horse_id, (select name from horses where id = horse_id) horse_name, rider_id, (select name from riders where id = rider_id) rider_name, time, notes, status from rides where date = ? and horse_id in (select id from horses where barn_id = ?) and rider_id in (select id from riders where barn_id = ?) order by time"
 	mysqlDate := date.Format("2006-01-02")
 	rideRows, err := db.Query(ridesQuery, mysqlDate, barnID, barnID)
 	if err != nil {
@@ -131,7 +131,7 @@ func GetScheduleByDay(barnID int64, date utils.Date, db *sql.DB) ([]*RideDetail,
 		rides = append(rides, &r)
 	}
 
-	schedulesQuery := "select horse_id, (select name from horses where id = horse_id) horse_name, rider_id, (select name from riders where id = rider_id) rider_name, end_date, time from schedules where day = ? and start_date <= ? and horse_id in (select id from horses where barn_id = ?) and rider_id in (select id from riders where barn_id = ?)"
+	schedulesQuery := "select horse_id, (select name from horses where id = horse_id) horse_name, rider_id, (select name from riders where id = rider_id) rider_name, end_date, time from schedules where day = ? and start_date <= ? and horse_id in (select id from horses where barn_id = ?) and rider_id in (select id from riders where barn_id = ?) order by time"
 	rows, err := db.Query(schedulesQuery, int64(date.Weekday()), mysqlDate, barnID, barnID)
 	if err != nil {
 		return nil, errors.New("failed to select schedules from database: " + err.Error())
