@@ -1,9 +1,9 @@
 package utils
 
 import (
+	"database/sql/driver"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"time"
 )
 
@@ -37,13 +37,35 @@ func (t *Time) UnmarshalJSON(data []byte) error {
 	if err != nil {
 		return errors.New("failed to unmarshal time: " + err.Error())
 	}
-	fmt.Println("provided time as string: " + s)
 	if len(s) > 0 {
 		parsedTime, err := time.Parse("3:04 PM", s)
 		if err != nil {
 			return errors.New("failed to parse time: " + err.Error())
 		}
-		*t = Time{parsedTime}
+		t = &Time{parsedTime}
+	} else {
+		t = nil
 	}
 	return nil
+}
+
+func (t *Time) MarshalJSON() ([]byte, error) {
+	return json.Marshal(t.Time.Format("3:04 PM"))
+}
+
+func (t *Time) Scan(value interface{}) error {
+	b := value.([]byte)
+	parsedTime, err := time.Parse("15:04:05", string(b))
+	if err != nil {
+		return errors.New("failed to parse time: " + err.Error())
+	}
+	*t = Time{parsedTime}
+	return nil
+}
+
+func (t *Time) Value() (driver.Value, error) {
+	if t == nil {
+		return nil, nil
+	}
+	return t.Time.Format("15:04:05"), nil
 }

@@ -23,6 +23,10 @@ import (
 
 func setup() error {
 	godotenv.Load()
+	apiKey := os.Getenv("API_KEY")
+	if apiKey == "" {
+		return errors.New("API_KEY not set")
+	}
 	db, err := sql.Open("mysql", "tcp(localhost:3306)/?parseTime=true")
 	if err != nil {
 		return errors.New("Failed to connect to database: " + err.Error())
@@ -31,8 +35,7 @@ func setup() error {
 	app.Use(logger.New())
 	app.Use(func(c *fiber.Ctx) error {
 		providedKey := c.Get("x-api-key")
-		expectedKey := os.Getenv("API_KEY")
-		if providedKey != expectedKey {
+		if providedKey != apiKey {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 				"error": "invalid api key",
 			})
