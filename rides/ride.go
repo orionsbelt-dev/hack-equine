@@ -3,6 +3,7 @@ package rides
 import (
 	"database/sql"
 	"errors"
+	"sort"
 	"time"
 
 	"hack/utils"
@@ -162,7 +163,7 @@ func GetScheduleByDay(barnID int64, date utils.Date, db *sql.DB) ([]*RideDetail,
 			}
 		}
 	}
-
+	sortRides(rides)
 	return rides, nil
 }
 
@@ -173,4 +174,21 @@ func areHorseAndRiderPresent(ride *RideDetail, rides []*RideDetail) bool {
 		}
 	}
 	return false
+}
+
+// I hate this function, but I don't know how to do it better right now
+func sortRides(rides []*RideDetail) {
+	sort.SliceStable(rides, func(i, j int) bool {
+		var zeroTime utils.Time
+		if rides[i].Time == nil && rides[j].Time != nil {
+			return zeroTime.After(rides[j].Time.Time) // TODO: before or after? get user feedback
+		}
+		if rides[j].Time == nil && rides[i].Time != nil {
+			return rides[i].Time.After(zeroTime.Time) // TODO: before or after? get user feedback
+		}
+		if rides[i].Time == nil && rides[j].Time == nil {
+			return true
+		}
+		return rides[i].Time.Before(rides[j].Time.Time)
+	})
 }
