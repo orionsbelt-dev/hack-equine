@@ -28,8 +28,6 @@ const (
 )
 
 func (r *Ride) Save(db *sql.DB) error {
-	query := "insert into rides (horse_id, rider_id, date, time, notes, status) values (?, ?, ?, ?, ?, ?)"
-
 	// set default status
 	if r.Status == "" {
 		r.Status = Scheduled
@@ -37,13 +35,23 @@ func (r *Ride) Save(db *sql.DB) error {
 	if r.Time.Format("15:04:05") == "00:00:00" {
 		r.Time = nil
 	}
-	result, err := db.Exec(query, r.HorseID, r.RiderID, r.Date.Format("2006-01-02"), r.Time, r.Notes, r.Status)
-	if err != nil {
-		return errors.New("failed to insert ride into database: " + err.Error())
-	}
-	r.ID, err = result.LastInsertId()
-	if err != nil {
-		return errors.New("failed to get last insert ID: " + err.Error())
+
+	if r.ID == 0 {
+		query := "insert into rides (horse_id, rider_id, date, time, notes, status) values (?, ?, ?, ?, ?, ?)"
+		result, err := db.Exec(query, r.HorseID, r.RiderID, r.Date.Format("2006-01-02"), r.Time, r.Notes, r.Status)
+		if err != nil {
+			return errors.New("failed to insert ride into database: " + err.Error())
+		}
+		r.ID, err = result.LastInsertId()
+		if err != nil {
+			return errors.New("failed to get last insert ID: " + err.Error())
+		}
+	} else {
+		query := "update rides set horse_id = ?, rider_id = ?, date = ?, time = ?, notes = ?, status = ? where id = ?"
+		_, err := db.Exec(query, r.HorseID, r.RiderID, r.Date.Format("2006-01-02"), r.Time, r.Notes, r.Status, r.ID)
+		if err != nil {
+			return errors.New("failed to update ride in database: " + err.Error())
+		}
 	}
 	return nil
 }
