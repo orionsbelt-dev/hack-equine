@@ -54,6 +54,9 @@ func (t *Time) MarshalJSON() ([]byte, error) {
 }
 
 func (t *Time) Scan(value interface{}) error {
+	if value == nil {
+		return nil
+	}
 	b := value.([]byte)
 	parsedTime, err := time.Parse("15:04:05", string(b))
 	if err != nil {

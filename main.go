@@ -255,11 +255,10 @@ func setup() error {
 	})
 
 	app.Get("/barn/:barnID/rides/:date", func(c *fiber.Ctx) error {
-		logger := c.Context().Logger()
 		date, err := time.Parse("2006-01-02", c.Params("date"))
 		if err != nil {
 			msg := "Failed to parse date: " + err.Error()
-			logger.Printf(msg)
+			fmt.Println(msg)
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 				"error": msg,
 			})
@@ -267,7 +266,7 @@ func setup() error {
 		barnID, err := strconv.ParseInt(c.Params("barnID"), 10, 64)
 		if err != nil {
 			msg := "Failed to parse barn ID: " + err.Error()
-			logger.Printf(msg)
+			fmt.Println(msg)
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 				"error": msg,
 			})
@@ -275,7 +274,7 @@ func setup() error {
 		rides, err := rides.GetScheduleByDay(barnID, utils.Date{Time: date}, db)
 		if err != nil {
 			msg := "Failed to get ride schedule: " + err.Error()
-			logger.Printf(msg)
+			fmt.Println(msg)
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"error": msg,
 			})

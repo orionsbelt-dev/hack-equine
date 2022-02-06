@@ -3,6 +3,7 @@ package rides
 import (
 	"database/sql"
 	"errors"
+	"reflect"
 	"sort"
 	"time"
 
@@ -57,62 +58,61 @@ func (r *Ride) Save(db *sql.DB) error {
 }
 
 type Schedule struct {
-	HorseID   int64      `json:"horse_id"`
-	RiderID   int64      `json:"rider_id"`
-	StartDate utils.Date `json:"start_date"`
-	EndDate   utils.Date `json:"end_date,omitempty"`
-	Time      utils.Time `json:"time,omitempty"`
-	Sunday    bool       `json:"sunday"`
-	Monday    bool       `json:"monday"`
-	Tuesday   bool       `json:"tuesday"`
-	Wednesday bool       `json:"wednesday"`
-	Thursday  bool       `json:"thursday"`
-	Friday    bool       `json:"friday"`
-	Saturday  bool       `json:"saturday"`
+	ID        int64       `json:"id,omitempty"`
+	HorseID   int64       `json:"horse_id"`
+	HorseName string      `json:"horse_name,omitempty"`
+	RiderID   int64       `json:"rider_id"`
+	RiderName string      `json:"rider_name,omitempty"`
+	StartDate utils.Date  `json:"start_date"`
+	EndDate   *utils.Date `json:"end_date,omitempty"`
+	Time      utils.Time  `json:"time,omitempty"`
+	Sunday    bool        `json:"sunday"`
+	Monday    bool        `json:"monday"`
+	Tuesday   bool        `json:"tuesday"`
+	Wednesday bool        `json:"wednesday"`
+	Thursday  bool        `json:"thursday"`
+	Friday    bool        `json:"friday"`
+	Saturday  bool        `json:"saturday"`
 }
 
 func (s *Schedule) Save(db *sql.DB) error {
-	var days []time.Weekday
-	if s.Sunday {
-		days = append(days, time.Sunday)
+	query := "insert into schedules (horse_id, rider_id, start_date, time, sunday, monday, tuesday, wednesday, thursday, friday, saturday) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+	result, err := db.Exec(query, s.HorseID, s.RiderID, s.StartDate.Format("2006-01-02"), s.Time.Format("15:04:05"), s.Sunday, s.Monday, s.Tuesday, s.Wednesday, s.Thursday, s.Friday, s.Saturday)
+	if err != nil {
+		return errors.New("failed to insert schedule into database: " + err.Error())
 	}
-	if s.Monday {
-		days = append(days, time.Monday)
+	id, err := result.LastInsertId()
+	if err != nil {
+		return errors.New("failed to get last insert ID: " + err.Error())
 	}
-	if s.Tuesday {
-		days = append(days, time.Tuesday)
-	}
-	if s.Wednesday {
-		days = append(days, time.Wednesday)
-	}
-	if s.Thursday {
-		days = append(days, time.Thursday)
-	}
-	if s.Friday {
-		days = append(days, time.Friday)
-	}
-	if s.Saturday {
-		days = append(days, time.Saturday)
-	}
-	query := "insert into schedules (horse_id, rider_id, start_date, time, day) values (?, ?, ?, ?, ?)"
-	for _, day := range days {
-		result, err := db.Exec(query, s.HorseID, s.RiderID, s.StartDate.Format("2006-01-02"), s.Time.Format("15:04:05"), day)
+	if s.EndDate.After(s.StartDate.Time) {
+		query := "update schedules set end_date = ? where id = ?"
+		_, err := db.Exec(query, s.EndDate.Format("2006-01-02"), id)
 		if err != nil {
-			return errors.New("failed to insert schedule into database: " + err.Error())
-		}
-		id, err := result.LastInsertId()
-		if err != nil {
-			return errors.New("failed to get last insert ID: " + err.Error())
-		}
-		if s.EndDate.After(s.StartDate.Time) {
-			query := "update schedules set end_date = ? where id = ?"
-			_, err := db.Exec(query, s.EndDate.Format("2006-01-02"), id)
-			if err != nil {
-				return errors.New("failed to update schedule end date in database: " + err.Error())
-			}
+			return errors.New("failed to update schedule end date in database: " + err.Error())
 		}
 	}
 	return nil
+}
+
+func ListSchedules(barnID int64, db *sql.DB) ([]*Schedule, error) {
+	query := "select horse_id, (select name from horses where id = horse_id) horse_name, rider_id, (select name from riders where id = rider_id) rider_name, start_date, end_date, time, sunday, monday, tuesday, wednesday, thursday, friday, saturday from schedules where horse_id in (select id from horses where barn_id = ?) and rider_id in (select id from riders where barn_id = ?) order by start_date, time"
+	rows, err := db.Query(query, barnID, barnID)
+	if err != nil {
+		return nil, errors.New("failed to query schedules from database: " + err.Error())
+	}
+	defer rows.Close()
+
+	var schedules []*Schedule
+	for rows.Next() {
+		var s Schedule
+		err := rows.Scan(&s.HorseID, &s.HorseName, &s.RiderID, &s.RiderName, &s.StartDate, &s.EndDate, &s.Time, &s.Sunday, &s.Monday, &s.Tuesday, &s.Wednesday, &s.Thursday, &s.Friday, &s.Saturday)
+		if err != nil {
+			return nil, errors.New("failed to scan schedule from database: " + err.Error())
+		}
+		schedules = append(schedules, &s)
+	}
+	return schedules, nil
 }
 
 type RideDetail struct {
@@ -140,39 +140,53 @@ func GetScheduleByDay(barnID int64, date utils.Date, db *sql.DB) ([]*RideDetail,
 		rides = append(rides, &r)
 	}
 
-	schedulesQuery := "select horse_id, (select name from horses where id = horse_id) horse_name, rider_id, (select name from riders where id = rider_id) rider_name, end_date, time from schedules where day = ? and start_date <= ? and horse_id in (select id from horses where barn_id = ?) and rider_id in (select id from riders where barn_id = ?) order by time"
-	rows, err := db.Query(schedulesQuery, int64(date.Weekday()), mysqlDate, barnID, barnID)
+	schedulesQuery := "select horse_id, (select name from horses where id = horse_id) horse_name, rider_id, (select name from riders where id = rider_id) rider_name, end_date, time, sunday, monday, tuesday, wednesday, thursday, friday, saturday from schedules where start_date <= ? and horse_id in (select id from horses where barn_id = ?) and rider_id in (select id from riders where barn_id = ?) order by time"
+	rows, err := db.Query(schedulesQuery, mysqlDate, barnID, barnID)
 	if err != nil {
 		return nil, errors.New("failed to select schedules from database: " + err.Error())
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var r RideDetail
-		var endDate sql.NullTime
-		err := rows.Scan(&r.HorseID, &r.HorseName, &r.RiderID, &r.RiderName, &endDate, &r.Time)
+		var s Schedule
+		var endDate *time.Time
+		err := rows.Scan(&s.HorseID, &s.HorseName, &s.RiderID, &s.RiderName, &endDate, &s.Time, &s.Sunday, &s.Monday, &s.Tuesday, &s.Wednesday, &s.Thursday, &s.Friday, &s.Saturday)
 		if err != nil {
 			return nil, errors.New("failed to scan schedule row: " + err.Error())
 		}
-		r.Date = date
-		r.Status = Scheduled
-		if endDate.Valid {
-			end := utils.Date{Time: endDate.Time}
-			if date.Before(end.Time) {
-				found := areHorseAndRiderPresent(&r, rides)
-				if !found {
-					rides = append(rides, &r)
-				}
+		if endDate != nil {
+			s.EndDate = &utils.Date{Time: *endDate}
+		}
+
+		day := date.Weekday().String()
+		scheduleValue := reflect.ValueOf(&s)
+		field := scheduleValue.Elem().FieldByName(day)
+
+		if s.EndDate != nil {
+			if date.Before(s.EndDate.Time) && field.Bool() {
+				rides = appendScheduledRide(&s, date, rides)
 			}
-		} else {
-			// if the same horse and rider ID pair is not already in the list of rides, add it
-			found := areHorseAndRiderPresent(&r, rides)
-			if !found {
-				rides = append(rides, &r)
-			}
+		} else if field.Bool() {
+			rides = appendScheduledRide(&s, date, rides)
 		}
 	}
 	sortRides(rides)
 	return rides, nil
+}
+
+func appendScheduledRide(s *Schedule, date utils.Date, rides []*RideDetail) []*RideDetail {
+	var r RideDetail
+	r.Date = date
+	r.Status = Scheduled
+	r.HorseID = s.HorseID
+	r.HorseName = s.HorseName
+	r.RiderID = s.RiderID
+	r.RiderName = s.RiderName
+	r.Time = &s.Time
+	found := areHorseAndRiderPresent(&r, rides)
+	if !found {
+		rides = append(rides, &r)
+	}
+	return rides
 }
 
 func areHorseAndRiderPresent(ride *RideDetail, rides []*RideDetail) bool {
@@ -189,10 +203,10 @@ func sortRides(rides []*RideDetail) {
 	sort.SliceStable(rides, func(i, j int) bool {
 		var zeroTime utils.Time
 		if rides[i].Time == nil && rides[j].Time != nil {
-			return zeroTime.After(rides[j].Time.Time) // TODO: before or after? get user feedback
+			return zeroTime.After(rides[j].Time.Time)
 		}
 		if rides[j].Time == nil && rides[i].Time != nil {
-			return rides[i].Time.After(zeroTime.Time) // TODO: before or after? get user feedback
+			return rides[i].Time.After(zeroTime.Time)
 		}
 		if rides[i].Time == nil && rides[j].Time == nil {
 			return true
