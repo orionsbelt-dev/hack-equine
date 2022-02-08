@@ -284,6 +284,28 @@ func setup() error {
 		})
 	})
 
+	app.Get("/barn/:barnID/recurring", func(c *fiber.Ctx) error {
+		barnID, err := strconv.ParseInt(c.Params("barnID"), 10, 64)
+		if err != nil {
+			msg := "Failed to parse barn ID: " + err.Error()
+			fmt.Println(msg)
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error": msg,
+			})
+		}
+		schedules, err := rides.ListSchedules(barnID, db)
+		if err != nil {
+			msg := "Failed to list recurring schedules: " + err.Error()
+			fmt.Println(msg)
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": msg,
+			})
+		}
+		return c.JSON(fiber.Map{
+			"schedules": schedules,
+		})
+	})
+
 	return app.Listen(":8000")
 }
 

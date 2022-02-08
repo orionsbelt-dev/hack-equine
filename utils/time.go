@@ -27,6 +27,15 @@ func (d *Date) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+func (d *Date) Scan(value interface{}) error {
+	if value == nil {
+		return nil
+	}
+	t := value.(time.Time)
+	*d = Date{t}
+	return nil
+}
+
 type Time struct {
 	time.Time
 }
