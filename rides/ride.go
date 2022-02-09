@@ -65,7 +65,7 @@ type Schedule struct {
 	RiderName string      `json:"rider_name,omitempty"`
 	StartDate utils.Date  `json:"start_date"`
 	EndDate   *utils.Date `json:"end_date,omitempty"`
-	Time      utils.Time  `json:"time,omitempty"`
+	Time      *utils.Time `json:"time,omitempty"`
 	Sunday    bool        `json:"sunday"`
 	Monday    bool        `json:"monday"`
 	Tuesday   bool        `json:"tuesday"`
@@ -189,7 +189,7 @@ func appendScheduledRide(s *Schedule, date utils.Date, rides []*RideDetail) []*R
 	r.HorseName = s.HorseName
 	r.RiderID = s.RiderID
 	r.RiderName = s.RiderName
-	r.Time = &s.Time
+	r.Time = s.Time
 	found := areHorseAndRiderPresent(&r, rides)
 	if !found {
 		rides = append(rides, &r)

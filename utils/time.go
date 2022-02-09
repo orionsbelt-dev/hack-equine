@@ -59,7 +59,10 @@ func (t *Time) UnmarshalJSON(data []byte) error {
 }
 
 func (t *Time) MarshalJSON() ([]byte, error) {
-	return json.Marshal(t.Time.Format("3:04 PM"))
+	if t != nil {
+		return json.Marshal(t.Time.Format("3:04 PM"))
+	}
+	return json.Marshal("")
 }
 
 func (t *Time) Scan(value interface{}) error {
