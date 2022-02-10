@@ -54,6 +54,28 @@ func (r *Ride) Save(db *sql.DB) error {
 	return nil
 }
 
+func (r *Ride) Cancel(db *sql.DB) error {
+	r.Status = Cancelled
+	if r.ID > 0 {
+		query := "update rides set status = ? where id = ?"
+		_, err := db.Exec(query, r.Status, r.ID)
+		if err != nil {
+			return errors.New("failed to set ride to cancelled status: " + err.Error())
+		}
+		return nil
+	}
+	query := "insert into rides (horse_id, rider_id, date, time, status) values (?, ?, ?, ?, ?)"
+	result, err := db.Exec(query, r.HorseID, r.RiderID, r.Date.Format("2006-01-02"), r.Time, r.Status)
+	if err != nil {
+		return errors.New("failed to insert cancelled ride into database: " + err.Error())
+	}
+	r.ID, err = result.LastInsertId()
+	if err != nil {
+		return errors.New("failed to get last insert ID: " + err.Error())
+	}
+	return nil
+}
+
 type Schedule struct {
 	ID        int64       `json:"id,omitempty"`
 	HorseID   int64       `json:"horse_id"`
@@ -138,9 +160,13 @@ func GetScheduleByDay(barnID int64, date utils.Date, db *sql.DB) ([]*RideDetail,
 	defer rideRows.Close()
 	for rideRows.Next() {
 		var r RideDetail
-		err := rideRows.Scan(&r.ID, &r.HorseID, &r.HorseName, &r.RiderID, &r.RiderName, &r.Time, &r.Notes, &r.Status)
+		var notes sql.NullString
+		err := rideRows.Scan(&r.ID, &r.HorseID, &r.HorseName, &r.RiderID, &r.RiderName, &r.Time, &notes, &r.Status)
 		if err != nil {
 			return nil, errors.New("failed to scan ride row: " + err.Error())
+		}
+		if notes.Valid {
+			r.Notes = notes.String
 		}
 		r.Date = date
 		rides = append(rides, &r)

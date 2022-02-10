@@ -21,7 +21,7 @@ func (d *Date) UnmarshalJSON(data []byte) error {
 	if len(s) > 0 {
 		parsedTime, err := time.Parse("1/2/2006", s)
 		if err != nil {
-			return errors.New("failed to parse time: " + err.Error())
+			return errors.New("failed to parse date: " + err.Error())
 		}
 		*d = Date{parsedTime}
 	}
@@ -83,7 +83,7 @@ func (t *Time) Scan(value interface{}) error {
 }
 
 func (t *Time) Value() (driver.Value, error) {
-	if !t.Valid {
+	if t == nil || !t.Valid {
 		return nil, nil
 	}
 	return t.Time.Format("15:04:05"), nil

@@ -36,8 +36,10 @@ func setup() error {
 	app.Use(func(c *fiber.Ctx) error {
 		providedKey := c.Get("x-api-key")
 		if providedKey != apiKey {
+			msg := "invalid api key"
+			fmt.Println(msg)
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-				"error": "invalid api key",
+				"error": msg,
 			})
 		}
 		return c.Next()
@@ -79,12 +81,11 @@ func setup() error {
 	})
 
 	app.Get("/user/:userID/barns", func(c *fiber.Ctx) error {
-		logger := c.Context().Logger()
 		userID := c.Params("userID")
 		barns, err := barns.GetBarnsByUserID(userID, db)
 		if err != nil {
 			msg := "Failed to get barns: " + err.Error()
-			logger.Printf(msg)
+			fmt.Println(msg)
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"error": msg,
 			})
@@ -219,6 +220,29 @@ func setup() error {
 		err = ride.Save(db)
 		if err != nil {
 			msg := "Failed to save ride: " + err.Error()
+			fmt.Println(msg)
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": msg,
+			})
+		}
+		return c.JSON(fiber.Map{
+			"ride": ride,
+		})
+	})
+
+	app.Put("/ride/cancel", func(c *fiber.Ctx) error {
+		var ride rides.Ride
+		err := c.BodyParser(&ride)
+		if err != nil {
+			msg := "Failed to parse ride: " + err.Error()
+			fmt.Println(msg)
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error": msg,
+			})
+		}
+		err = ride.Cancel(db)
+		if err != nil {
+			msg := "Failed to cancel ride: " + err.Error()
 			fmt.Println(msg)
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"error": msg,
