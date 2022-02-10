@@ -33,9 +33,6 @@ func (r *Ride) Save(db *sql.DB) error {
 	if r.Status == "" {
 		r.Status = Scheduled
 	}
-	if r.Time.Format("15:04:05") == "00:00:00" {
-		r.Time = nil
-	}
 
 	if r.ID == 0 {
 		query := "insert into rides (horse_id, rider_id, date, time, notes, status) values (?, ?, ?, ?, ?, ?)"
@@ -78,7 +75,7 @@ type Schedule struct {
 func (s *Schedule) Save(db *sql.DB) error {
 	if s.ID == 0 {
 		query := "insert into schedules (horse_id, rider_id, start_date, time, sunday, monday, tuesday, wednesday, thursday, friday, saturday) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-		result, err := db.Exec(query, s.HorseID, s.RiderID, s.StartDate.Format("2006-01-02"), s.Time.Format("15:04:05"), s.Sunday, s.Monday, s.Tuesday, s.Wednesday, s.Thursday, s.Friday, s.Saturday)
+		result, err := db.Exec(query, s.HorseID, s.RiderID, s.StartDate.Format("2006-01-02"), s.Time, s.Sunday, s.Monday, s.Tuesday, s.Wednesday, s.Thursday, s.Friday, s.Saturday)
 		if err != nil {
 			return errors.New("failed to insert schedule into database: " + err.Error())
 		}
@@ -88,12 +85,13 @@ func (s *Schedule) Save(db *sql.DB) error {
 		}
 	} else {
 		query := "update schedules set horse_id = ?, rider_id = ?, start_date = ?, time = ?, sunday = ?, monday = ?, tuesday = ?, wednesday = ?, thursday = ?, friday = ?, saturday = ? where id = ?"
-		_, err := db.Exec(query, s.HorseID, s.RiderID, s.StartDate.Format("2006-01-02"), s.Time.Format("15:04:05"), s.Sunday, s.Monday, s.Tuesday, s.Wednesday, s.Thursday, s.Friday, s.Saturday, s.ID)
+		_, err := db.Exec(query, s.HorseID, s.RiderID, s.StartDate.Format("2006-01-02"), s.Time, s.Sunday, s.Monday, s.Tuesday, s.Wednesday, s.Thursday, s.Friday, s.Saturday, s.ID)
 		if err != nil {
 			return errors.New("failed to update schedule in database: " + err.Error())
 		}
 	}
-	if s.EndDate.After(s.StartDate.Time) {
+	// could improve this with custom value method for an end date type
+	if s.EndDate != nil && s.EndDate.After(s.StartDate.Time) {
 		query := "update schedules set end_date = ? where id = ?"
 		_, err := db.Exec(query, s.EndDate.Format("2006-01-02"), s.ID)
 		if err != nil {
@@ -209,16 +207,16 @@ func areHorseAndRiderPresent(ride *RideDetail, rides []*RideDetail) bool {
 // I hate this function, but I don't know how to do it better right now
 func sortRides(rides []*RideDetail) {
 	sort.SliceStable(rides, func(i, j int) bool {
-		var zeroTime utils.Time
+		var zeroTime time.Time
 		if rides[i].Time == nil && rides[j].Time != nil {
 			return zeroTime.After(rides[j].Time.Time)
 		}
 		if rides[j].Time == nil && rides[i].Time != nil {
-			return rides[i].Time.After(zeroTime.Time)
+			return rides[i].Time.Time.After(zeroTime)
 		}
 		if rides[i].Time == nil && rides[j].Time == nil {
 			return true
 		}
-		return rides[i].Time.Before(rides[j].Time.Time)
+		return rides[i].Time.Time.Before(rides[j].Time.Time)
 	})
 }

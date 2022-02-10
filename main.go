@@ -230,12 +230,10 @@ func setup() error {
 	})
 
 	app.Post("/schedule", func(c *fiber.Ctx) error {
-		logger := c.Context().Logger()
 		var schedule rides.Schedule
 		err := c.BodyParser(&schedule)
 		if err != nil {
 			msg := "Failed to parse schedule: " + err.Error()
-			logger.Printf(msg)
 			fmt.Println(msg)
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 				"error": msg,
@@ -244,7 +242,7 @@ func setup() error {
 		err = schedule.Save(db)
 		if err != nil {
 			msg := "Failed to save schedule: " + err.Error()
-			logger.Printf(msg)
+			fmt.Println(msg)
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"error": msg,
 			})

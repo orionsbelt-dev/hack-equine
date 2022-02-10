@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"database/sql"
 	"database/sql/driver"
 	"encoding/json"
 	"errors"
@@ -37,7 +38,7 @@ func (d *Date) Scan(value interface{}) error {
 }
 
 type Time struct {
-	time.Time
+	sql.NullTime
 }
 
 func (t *Time) UnmarshalJSON(data []byte) error {
@@ -51,9 +52,10 @@ func (t *Time) UnmarshalJSON(data []byte) error {
 		if err != nil {
 			return errors.New("failed to parse time: " + err.Error())
 		}
-		*t = Time{parsedTime}
+		t.Valid = true
+		t.Time = parsedTime
 	} else {
-		t = nil
+		t.Valid = false
 	}
 	return nil
 }
@@ -67,6 +69,7 @@ func (t *Time) MarshalJSON() ([]byte, error) {
 
 func (t *Time) Scan(value interface{}) error {
 	if value == nil {
+		t.Valid = false
 		return nil
 	}
 	b := value.([]byte)
@@ -74,12 +77,13 @@ func (t *Time) Scan(value interface{}) error {
 	if err != nil {
 		return errors.New("failed to parse time: " + err.Error())
 	}
-	*t = Time{parsedTime}
+	t.Valid = true
+	t.Time = parsedTime
 	return nil
 }
 
 func (t *Time) Value() (driver.Value, error) {
-	if t == nil {
+	if !t.Valid {
 		return nil, nil
 	}
 	return t.Time.Format("15:04:05"), nil
