@@ -143,6 +143,15 @@ func ListSchedules(barnID int64, db *sql.DB) ([]*Schedule, error) {
 	return schedules, nil
 }
 
+func DeleteSchedule(id int64, db *sql.DB) error {
+	query := "delete from schedules where id = ?"
+	_, err := db.Exec(query, id)
+	if err != nil {
+		return errors.New("failed to delete schedule from database: " + err.Error())
+	}
+	return nil
+}
+
 type RideDetail struct {
 	Ride
 	HorseName string `json:"horse_name"`

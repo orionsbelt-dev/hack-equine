@@ -276,6 +276,27 @@ func setup() error {
 		})
 	})
 
+	app.Delete("/schedule/:id", func(c *fiber.Ctx) error {
+		id, err := strconv.ParseInt(c.Params("id"), 10, 64)
+		if err != nil {
+			msg := "Failed to parse schedule id: " + err.Error()
+			fmt.Println(msg)
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error": msg,
+			})
+		}
+		err = rides.DeleteSchedule(id, db)
+		if err != nil {
+			msg := "Failed to delete schedule: " + err.Error()
+			fmt.Println(msg)
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": msg,
+			})
+		}
+		c.Status(fiber.StatusOK)
+		return nil
+	})
+
 	app.Get("/barn/:barnID/rides/:date", func(c *fiber.Ctx) error {
 		date, err := time.Parse("2006-01-02", c.Params("date"))
 		if err != nil {
