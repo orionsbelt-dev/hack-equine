@@ -158,6 +158,48 @@ type RideDetail struct {
 	RiderName string `json:"rider_name"`
 }
 
+func GetHorseScheduleByDay(horseID int64, date utils.Date, db *sql.DB) ([]*RideDetail, error) {
+	query := "select id, horse_id, (select name from horses where id = horse_id) horse_name, rider_id, (select name from riders where id = rider_id) rider_name, date, time, status from rides where horse_id = ? and date = ? order by time"
+	rows, err := db.Query(query, horseID, date.Format("2006-01-02"))
+	if err != nil {
+		return nil, errors.New("failed to query schedules from database: " + err.Error())
+	}
+	defer rows.Close()
+
+	var rides []*RideDetail
+	for rows.Next() {
+		var r RideDetail
+		err := rows.Scan(&r.ID, &r.HorseID, &r.HorseName, &r.RiderID, &r.RiderName, &r.Date, &r.Time, &r.Status)
+		if err != nil {
+			return nil, errors.New("failed to scan schedule from database: " + err.Error())
+		}
+		rides = append(rides, &r)
+	}
+	schedulesQuery := "select horse_id, (select name from horses where id = horse_id) horse_name, rider_id, (select name from riders where id = rider_id) rider_name, time, sunday, monday, tuesday, wednesday, thursday, friday, saturday from schedules where horse_id = ? and start_date <= ? and (end_date is null or end_date >= ?) order by start_date, time"
+	scheduleRows, err := db.Query(schedulesQuery, horseID, date.Format("2006-01-02"), date.Format("2006-01-02"))
+	if err != nil {
+		return nil, errors.New("failed to query schedules from database: " + err.Error())
+	}
+	defer scheduleRows.Close()
+	for scheduleRows.Next() {
+		var s Schedule
+		err := scheduleRows.Scan(&s.HorseID, &s.HorseName, &s.RiderID, &s.RiderName, &s.Time, &s.Sunday, &s.Monday, &s.Tuesday, &s.Wednesday, &s.Thursday, &s.Friday, &s.Saturday)
+		if err != nil {
+			return nil, errors.New("failed to scan schedule row: " + err.Error())
+		}
+
+		day := date.Weekday().String()
+		scheduleValue := reflect.ValueOf(&s)
+		field := scheduleValue.Elem().FieldByName(day)
+
+		if field.Bool() {
+			rides = appendScheduledRide(&s, date, rides)
+		}
+	}
+
+	return rides, nil
+}
+
 func GetScheduleByDay(barnID int64, date utils.Date, db *sql.DB) ([]*RideDetail, error) {
 	var rides []*RideDetail
 	ridesQuery := "select id, horse_id, (select name from horses where id = horse_id) horse_name, rider_id, (select name from riders where id = rider_id) rider_name, time, notes, status from rides where date = ? and horse_id in (select id from horses where barn_id = ?) and rider_id in (select id from riders where barn_id = ?) order by time"
@@ -232,7 +274,7 @@ func appendScheduledRide(s *Schedule, date utils.Date, rides []*RideDetail) []*R
 
 func areHorseAndRiderPresent(ride *RideDetail, rides []*RideDetail) bool {
 	for _, r := range rides {
-		if r.HorseID == ride.HorseID && r.RiderID == ride.RiderID {
+		if r.HorseID == ride.HorseID && r.RiderID == ride.RiderID && r.Time == ride.Time {
 			return true
 		}
 	}

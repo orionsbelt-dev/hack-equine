@@ -253,6 +253,43 @@ func setup() error {
 		})
 	})
 
+	app.Post("/event/type", func(c *fiber.Ctx) error {
+		var eventType rides.EventType
+		err := c.BodyParser(&eventType)
+		if err != nil {
+			msg := "Failed to parse event type: " + err.Error()
+			fmt.Println(msg)
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error": msg,
+			})
+		}
+		err = eventType.Save(db)
+		if err != nil {
+			msg := "Failed to save event type: " + err.Error()
+			fmt.Println(msg)
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": msg,
+			})
+		}
+		return c.JSON(fiber.Map{
+			"event_type": eventType,
+		})
+	})
+
+	app.Get("/event/types", func(c *fiber.Ctx) error {
+		types, err := rides.ListEventTypes(db)
+		if err != nil {
+			msg := "Failed to get event types: " + err.Error()
+			fmt.Println(msg)
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": msg,
+			})
+		}
+		return c.JSON(fiber.Map{
+			"event_types": types,
+		})
+	})
+
 	app.Post("/schedule", func(c *fiber.Ctx) error {
 		var schedule rides.Schedule
 		err := c.BodyParser(&schedule)
@@ -324,6 +361,36 @@ func setup() error {
 		}
 		return c.JSON(fiber.Map{
 			"rides": rides,
+		})
+	})
+
+	app.Get("/horse/:id/schedule/:date", func(c *fiber.Ctx) error {
+		date, err := time.Parse("2006-01-02", c.Params("date"))
+		if err != nil {
+			msg := "Failed to parse date: " + err.Error()
+			fmt.Println(msg)
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error": msg,
+			})
+		}
+		id, err := strconv.ParseInt(c.Params("id"), 10, 64)
+		if err != nil {
+			msg := "Failed to parse horse ID: " + err.Error()
+			fmt.Println(msg)
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error": msg,
+			})
+		}
+		schedule, err := rides.GetHorseScheduleByDay(id, utils.Date{Time: date}, db)
+		if err != nil {
+			msg := "Failed to get schedule: " + err.Error()
+			fmt.Println(msg)
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": msg,
+			})
+		}
+		return c.JSON(fiber.Map{
+			"schedule": schedule,
 		})
 	})
 
