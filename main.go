@@ -13,12 +13,15 @@ import (
 	"hack/horses"
 	"hack/riders"
 	"hack/rides"
+	"hack/users"
 	"hack/utils"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/joho/godotenv"
+	"github.com/stytchauth/stytch-go/v4/stytch"
+	"github.com/stytchauth/stytch-go/v4/stytch/stytchapi"
 )
 
 func setup() error {
@@ -31,6 +34,17 @@ func setup() error {
 	if err != nil {
 		return errors.New("Failed to connect to database: " + err.Error())
 	}
+
+	// stytch
+	client, err := stytchapi.NewAPIClient(
+		stytch.EnvTest,
+		os.Getenv("STYTCH_PROJECT_ID"),
+		os.Getenv("STYTCH_PROJECT_SECRET"),
+	)
+	if err != nil {
+		return errors.New("Failed to create stytch client: " + err.Error())
+	}
+
 	app := fiber.New()
 	app.Use(logger.New())
 	app.Use(func(c *fiber.Ctx) error {
@@ -47,6 +61,69 @@ func setup() error {
 
 	app.Get("/", func(c *fiber.Ctx) error {
 		return c.SendString("Hello, world!")
+	})
+
+	app.Post("/login", func(c *fiber.Ctx) error {
+		var user users.User
+		err := c.BodyParser(&user)
+		if err != nil {
+			msg := "error parsing user: " + err.Error()
+			fmt.Println(msg)
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error": msg,
+			})
+		}
+		err = user.Login(client, db)
+		if err != nil {
+			msg := "error logging in user: " + err.Error()
+			fmt.Println(msg)
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": msg,
+			})
+		}
+		return c.JSON(user)
+	})
+
+	app.Post("/signup", func(c *fiber.Ctx) error {
+		var user users.User
+		err := c.BodyParser(&user)
+		if err != nil {
+			msg := "error parsing user: " + err.Error()
+			fmt.Println(msg)
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error": msg,
+			})
+		}
+		err = user.Signup(client, db)
+		if err != nil {
+			msg := "error signing up user: " + err.Error()
+			fmt.Println(msg)
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": msg,
+			})
+		}
+		return c.JSON(user)
+	})
+
+	app.Post("/authenticate", func(c *fiber.Ctx) error {
+		var userAuth users.UserAuth
+		err := c.BodyParser(&userAuth)
+		if err != nil {
+			msg := "error parsing user auth: " + err.Error()
+			fmt.Println(msg)
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error": msg,
+			})
+		}
+		user, err := userAuth.AuthenticatePasscode(client, db)
+		if err != nil {
+			msg := "error authenticating passcode: " + err.Error()
+			fmt.Println(msg)
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": msg,
+			})
+		}
+		return c.JSON(*user)
 	})
 
 	app.Post("/barn", func(c *fiber.Ctx) error {

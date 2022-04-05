@@ -6,8 +6,23 @@ import (
 )
 
 type EventType struct {
-	ID   int64
-	Name string
+	ID   int64  `json:"id"`
+	Name string `json:"name"`
+}
+
+type Name string
+
+func (n *Name) Scan(value interface{}) error {
+	if value == nil {
+		return nil
+	}
+	switch v := value.(type) {
+	case string:
+		*n = Name(v)
+		return nil
+	default:
+		return errors.New("failed to scan name: invalid type")
+	}
 }
 
 func (t *EventType) Save(db *sql.DB) error {

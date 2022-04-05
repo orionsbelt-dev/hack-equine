@@ -9,8 +9,14 @@ require (
 )
 
 require (
+	github.com/MicahParks/keyfunc v1.0.1 // indirect
+	github.com/golang-jwt/jwt/v4 v4.4.0 // indirect
+)
+
+require (
 	github.com/andybalholm/brotli v1.0.2 // indirect
 	github.com/klauspost/compress v1.13.4 // indirect
+	github.com/stytchauth/stytch-go/v4 v4.0.1
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasthttp v1.31.0 // indirect
 	github.com/valyala/tcplisten v1.0.0 // indirect

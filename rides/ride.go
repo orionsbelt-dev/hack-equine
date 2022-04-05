@@ -11,13 +11,14 @@ import (
 )
 
 type Ride struct {
-	ID      int64       `json:"id,omitempty"`
-	HorseID int64       `json:"horse_id"`
-	RiderID int64       `json:"rider_id"`
-	Date    utils.Date  `json:"date"`
-	Time    *utils.Time `json:"time,omitempty"`
-	Notes   string      `json:"notes"`
-	Status  Status      `json:"status"`
+	ID          int64       `json:"id,omitempty"`
+	HorseID     int64       `json:"horse_id"`
+	RiderID     int64       `json:"rider_id"`
+	EventTypeID int64       `json:"event_type_id"`
+	Date        utils.Date  `json:"date"`
+	Time        *utils.Time `json:"time,omitempty"`
+	Notes       string      `json:"notes"`
+	Status      Status      `json:"status"`
 }
 
 type Status string
@@ -34,9 +35,13 @@ func (r *Ride) Save(db *sql.DB) error {
 		r.Status = Scheduled
 	}
 
+	if r.EventTypeID == 0 {
+		r.EventTypeID = 10 // Generic event type
+	}
+
 	if r.ID == 0 {
-		query := "insert into rides (horse_id, rider_id, date, time, notes, status) values (?, ?, ?, ?, ?, ?)"
-		result, err := db.Exec(query, r.HorseID, r.RiderID, r.Date.Format("2006-01-02"), r.Time, r.Notes, r.Status)
+		query := "insert into rides (horse_id, rider_id, event_type_id, date, time, notes, status) values (?, ?, ?, ?, ?, ?, ?)"
+		result, err := db.Exec(query, r.HorseID, r.RiderID, r.EventTypeID, r.Date.Format("2006-01-02"), r.Time, r.Notes, r.Status)
 		if err != nil {
 			return errors.New("failed to insert ride into database: " + err.Error())
 		}
@@ -45,8 +50,8 @@ func (r *Ride) Save(db *sql.DB) error {
 			return errors.New("failed to get last insert ID: " + err.Error())
 		}
 	} else {
-		query := "update rides set horse_id = ?, rider_id = ?, date = ?, time = ?, notes = ?, status = ? where id = ?"
-		_, err := db.Exec(query, r.HorseID, r.RiderID, r.Date.Format("2006-01-02"), r.Time, r.Notes, r.Status, r.ID)
+		query := "update rides set horse_id = ?, rider_id = ?, event_type_id = ?, date = ?, time = ?, notes = ?, status = ? where id = ?"
+		_, err := db.Exec(query, r.HorseID, r.RiderID, r.EventTypeID, r.Date.Format("2006-01-02"), r.Time, r.Notes, r.Status, r.ID)
 		if err != nil {
 			return errors.New("failed to update ride in database: " + err.Error())
 		}
@@ -64,8 +69,8 @@ func (r *Ride) Cancel(db *sql.DB) error {
 		}
 		return nil
 	}
-	query := "insert into rides (horse_id, rider_id, date, time, status) values (?, ?, ?, ?, ?)"
-	result, err := db.Exec(query, r.HorseID, r.RiderID, r.Date.Format("2006-01-02"), r.Time, r.Status)
+	query := "insert into rides (horse_id, rider_id, event_type_id, date, time, status) values (?, ?, ?, ?, ?, ?)"
+	result, err := db.Exec(query, r.HorseID, r.RiderID, r.EventTypeID, r.Date.Format("2006-01-02"), r.Time, r.Status)
 	if err != nil {
 		return errors.New("failed to insert cancelled ride into database: " + err.Error())
 	}
@@ -82,6 +87,7 @@ type Schedule struct {
 	HorseName string      `json:"horse_name,omitempty"`
 	RiderID   int64       `json:"rider_id"`
 	RiderName string      `json:"rider_name,omitempty"`
+	EventType EventType   `json:"event_type,omitempty"`
 	StartDate utils.Date  `json:"start_date"`
 	EndDate   *utils.Date `json:"end_date,omitempty"`
 	Time      *utils.Time `json:"time,omitempty"`
@@ -96,8 +102,8 @@ type Schedule struct {
 
 func (s *Schedule) Save(db *sql.DB) error {
 	if s.ID == 0 {
-		query := "insert into schedules (horse_id, rider_id, start_date, time, sunday, monday, tuesday, wednesday, thursday, friday, saturday) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-		result, err := db.Exec(query, s.HorseID, s.RiderID, s.StartDate.Format("2006-01-02"), s.Time, s.Sunday, s.Monday, s.Tuesday, s.Wednesday, s.Thursday, s.Friday, s.Saturday)
+		query := "insert into schedules (horse_id, rider_id, event_type_id, start_date, time, sunday, monday, tuesday, wednesday, thursday, friday, saturday) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+		result, err := db.Exec(query, s.HorseID, s.RiderID, s.EventType.ID, s.StartDate.Format("2006-01-02"), s.Time, s.Sunday, s.Monday, s.Tuesday, s.Wednesday, s.Thursday, s.Friday, s.Saturday)
 		if err != nil {
 			return errors.New("failed to insert schedule into database: " + err.Error())
 		}
@@ -106,8 +112,8 @@ func (s *Schedule) Save(db *sql.DB) error {
 			return errors.New("failed to get last insert ID: " + err.Error())
 		}
 	} else {
-		query := "update schedules set horse_id = ?, rider_id = ?, start_date = ?, time = ?, sunday = ?, monday = ?, tuesday = ?, wednesday = ?, thursday = ?, friday = ?, saturday = ? where id = ?"
-		_, err := db.Exec(query, s.HorseID, s.RiderID, s.StartDate.Format("2006-01-02"), s.Time, s.Sunday, s.Monday, s.Tuesday, s.Wednesday, s.Thursday, s.Friday, s.Saturday, s.ID)
+		query := "update schedules set horse_id = ?, rider_id = ?, event_type_id = ?, start_date = ?, time = ?, sunday = ?, monday = ?, tuesday = ?, wednesday = ?, thursday = ?, friday = ?, saturday = ? where id = ?"
+		_, err := db.Exec(query, s.HorseID, s.RiderID, s.EventType.ID, s.StartDate.Format("2006-01-02"), s.Time, s.Sunday, s.Monday, s.Tuesday, s.Wednesday, s.Thursday, s.Friday, s.Saturday, s.ID)
 		if err != nil {
 			return errors.New("failed to update schedule in database: " + err.Error())
 		}
@@ -124,7 +130,7 @@ func (s *Schedule) Save(db *sql.DB) error {
 }
 
 func ListSchedules(barnID int64, db *sql.DB) ([]*Schedule, error) {
-	query := "select id, horse_id, (select name from horses where id = horse_id) horse_name, rider_id, (select name from riders where id = rider_id) rider_name, start_date, end_date, time, sunday, monday, tuesday, wednesday, thursday, friday, saturday from schedules where horse_id in (select id from horses where barn_id = ?) and rider_id in (select id from riders where barn_id = ?) order by start_date, time"
+	query := "select id, horse_id, (select name from horses where id = horse_id) horse_name, rider_id, (select name from riders where id = rider_id) rider_name, event_type_id, (select name from event_types where id = event_type_id) event_type_name, start_date, end_date, time, sunday, monday, tuesday, wednesday, thursday, friday, saturday from schedules where horse_id in (select id from horses where barn_id = ?) and rider_id in (select id from riders where barn_id = ?) order by start_date, time"
 	rows, err := db.Query(query, barnID, barnID)
 	if err != nil {
 		return nil, errors.New("failed to query schedules from database: " + err.Error())
@@ -134,7 +140,7 @@ func ListSchedules(barnID int64, db *sql.DB) ([]*Schedule, error) {
 	var schedules []*Schedule
 	for rows.Next() {
 		var s Schedule
-		err := rows.Scan(&s.ID, &s.HorseID, &s.HorseName, &s.RiderID, &s.RiderName, &s.StartDate, &s.EndDate, &s.Time, &s.Sunday, &s.Monday, &s.Tuesday, &s.Wednesday, &s.Thursday, &s.Friday, &s.Saturday)
+		err := rows.Scan(&s.ID, &s.HorseID, &s.HorseName, &s.RiderID, &s.RiderName, &s.EventType.ID, &s.EventType.Name, &s.StartDate, &s.EndDate, &s.Time, &s.Sunday, &s.Monday, &s.Tuesday, &s.Wednesday, &s.Thursday, &s.Friday, &s.Saturday)
 		if err != nil {
 			return nil, errors.New("failed to scan schedule from database: " + err.Error())
 		}
@@ -154,12 +160,13 @@ func DeleteSchedule(id int64, db *sql.DB) error {
 
 type RideDetail struct {
 	Ride
-	HorseName string `json:"horse_name"`
-	RiderName string `json:"rider_name"`
+	HorseName     string `json:"horse_name"`
+	RiderName     string `json:"rider_name"`
+	EventTypeName string `json:"event_type_name"`
 }
 
 func GetHorseScheduleByDay(horseID int64, date utils.Date, db *sql.DB) ([]*RideDetail, error) {
-	query := "select id, horse_id, (select name from horses where id = horse_id) horse_name, rider_id, (select name from riders where id = rider_id) rider_name, date, time, status from rides where horse_id = ? and date = ? order by time"
+	query := "select id, horse_id, (select name from horses where id = horse_id) horse_name, rider_id, (select name from riders where id = rider_id) rider_name, event_type_id, (select name from event_types where id = event_type_id) event_type_name, date, time, status from rides where horse_id = ? and date = ? order by time"
 	rows, err := db.Query(query, horseID, date.Format("2006-01-02"))
 	if err != nil {
 		return nil, errors.New("failed to query schedules from database: " + err.Error())
@@ -169,13 +176,13 @@ func GetHorseScheduleByDay(horseID int64, date utils.Date, db *sql.DB) ([]*RideD
 	var rides []*RideDetail
 	for rows.Next() {
 		var r RideDetail
-		err := rows.Scan(&r.ID, &r.HorseID, &r.HorseName, &r.RiderID, &r.RiderName, &r.Date, &r.Time, &r.Status)
+		err := rows.Scan(&r.ID, &r.HorseID, &r.HorseName, &r.RiderID, &r.RiderName, &r.EventTypeID, &r.EventTypeName, &r.Date, &r.Time, &r.Status)
 		if err != nil {
 			return nil, errors.New("failed to scan schedule from database: " + err.Error())
 		}
 		rides = append(rides, &r)
 	}
-	schedulesQuery := "select horse_id, (select name from horses where id = horse_id) horse_name, rider_id, (select name from riders where id = rider_id) rider_name, time, sunday, monday, tuesday, wednesday, thursday, friday, saturday from schedules where horse_id = ? and start_date <= ? and (end_date is null or end_date >= ?) order by start_date, time"
+	schedulesQuery := "select horse_id, (select name from horses where id = horse_id) horse_name, rider_id, (select name from riders where id = rider_id) rider_name, event_type_id, (select name from event_types where id = event_type_id) event_type_name, time, sunday, monday, tuesday, wednesday, thursday, friday, saturday from schedules where horse_id = ? and start_date <= ? and (end_date is null or end_date >= ?) order by start_date, time"
 	scheduleRows, err := db.Query(schedulesQuery, horseID, date.Format("2006-01-02"), date.Format("2006-01-02"))
 	if err != nil {
 		return nil, errors.New("failed to query schedules from database: " + err.Error())
@@ -183,7 +190,7 @@ func GetHorseScheduleByDay(horseID int64, date utils.Date, db *sql.DB) ([]*RideD
 	defer scheduleRows.Close()
 	for scheduleRows.Next() {
 		var s Schedule
-		err := scheduleRows.Scan(&s.HorseID, &s.HorseName, &s.RiderID, &s.RiderName, &s.Time, &s.Sunday, &s.Monday, &s.Tuesday, &s.Wednesday, &s.Thursday, &s.Friday, &s.Saturday)
+		err := scheduleRows.Scan(&s.HorseID, &s.HorseName, &s.RiderID, &s.RiderName, &s.EventType.ID, &s.EventType.Name, &s.Time, &s.Sunday, &s.Monday, &s.Tuesday, &s.Wednesday, &s.Thursday, &s.Friday, &s.Saturday)
 		if err != nil {
 			return nil, errors.New("failed to scan schedule row: " + err.Error())
 		}
@@ -202,7 +209,7 @@ func GetHorseScheduleByDay(horseID int64, date utils.Date, db *sql.DB) ([]*RideD
 
 func GetScheduleByDay(barnID int64, date utils.Date, db *sql.DB) ([]*RideDetail, error) {
 	var rides []*RideDetail
-	ridesQuery := "select id, horse_id, (select name from horses where id = horse_id) horse_name, rider_id, (select name from riders where id = rider_id) rider_name, time, notes, status from rides where date = ? and horse_id in (select id from horses where barn_id = ?) and rider_id in (select id from riders where barn_id = ?) order by time"
+	ridesQuery := "select id, horse_id, (select name from horses where id = horse_id) horse_name, rider_id, (select name from riders where id = rider_id) rider_name, event_type_id, (select name from event_types where id = event_type_id) event_type_name, time, notes, status from rides where date = ? and horse_id in (select id from horses where barn_id = ?) and rider_id in (select id from riders where barn_id = ?) order by time"
 	mysqlDate := date.Format("2006-01-02")
 	rideRows, err := db.Query(ridesQuery, mysqlDate, barnID, barnID)
 	if err != nil {
@@ -212,7 +219,7 @@ func GetScheduleByDay(barnID int64, date utils.Date, db *sql.DB) ([]*RideDetail,
 	for rideRows.Next() {
 		var r RideDetail
 		var notes sql.NullString
-		err := rideRows.Scan(&r.ID, &r.HorseID, &r.HorseName, &r.RiderID, &r.RiderName, &r.Time, &notes, &r.Status)
+		err := rideRows.Scan(&r.ID, &r.HorseID, &r.HorseName, &r.RiderID, &r.RiderName, &r.EventTypeID, &r.EventTypeName, &r.Time, &notes, &r.Status)
 		if err != nil {
 			return nil, errors.New("failed to scan ride row: " + err.Error())
 		}
@@ -223,7 +230,7 @@ func GetScheduleByDay(barnID int64, date utils.Date, db *sql.DB) ([]*RideDetail,
 		rides = append(rides, &r)
 	}
 
-	schedulesQuery := "select horse_id, (select name from horses where id = horse_id) horse_name, rider_id, (select name from riders where id = rider_id) rider_name, end_date, time, sunday, monday, tuesday, wednesday, thursday, friday, saturday from schedules where start_date <= ? and horse_id in (select id from horses where barn_id = ?) and rider_id in (select id from riders where barn_id = ?) order by time"
+	schedulesQuery := "select horse_id, (select name from horses where id = horse_id) horse_name, rider_id, (select name from riders where id = rider_id) rider_name, event_type_id, (select name from event_types where id = event_type_id) event_type_name, end_date, time, sunday, monday, tuesday, wednesday, thursday, friday, saturday from schedules where start_date <= ? and horse_id in (select id from horses where barn_id = ?) and rider_id in (select id from riders where barn_id = ?) order by time"
 	rows, err := db.Query(schedulesQuery, mysqlDate, barnID, barnID)
 	if err != nil {
 		return nil, errors.New("failed to select schedules from database: " + err.Error())
@@ -232,7 +239,7 @@ func GetScheduleByDay(barnID int64, date utils.Date, db *sql.DB) ([]*RideDetail,
 	for rows.Next() {
 		var s Schedule
 		var endDate *time.Time
-		err := rows.Scan(&s.HorseID, &s.HorseName, &s.RiderID, &s.RiderName, &endDate, &s.Time, &s.Sunday, &s.Monday, &s.Tuesday, &s.Wednesday, &s.Thursday, &s.Friday, &s.Saturday)
+		err := rows.Scan(&s.HorseID, &s.HorseName, &s.RiderID, &s.RiderName, &s.EventType.ID, &s.EventType.Name, &endDate, &s.Time, &s.Sunday, &s.Monday, &s.Tuesday, &s.Wednesday, &s.Thursday, &s.Friday, &s.Saturday)
 		if err != nil {
 			return nil, errors.New("failed to scan schedule row: " + err.Error())
 		}
@@ -264,6 +271,8 @@ func appendScheduledRide(s *Schedule, date utils.Date, rides []*RideDetail) []*R
 	r.HorseName = s.HorseName
 	r.RiderID = s.RiderID
 	r.RiderName = s.RiderName
+	r.EventTypeID = s.EventType.ID
+	r.EventTypeName = s.EventType.Name
 	r.Time = s.Time
 	found := areHorseAndRiderPresent(&r, rides)
 	if !found {
