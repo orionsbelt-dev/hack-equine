@@ -30,7 +30,7 @@ func setup() error {
 	if apiKey == "" {
 		return errors.New("API_KEY not set")
 	}
-	db, err := sql.Open("mysql", "tcp(localhost:3306)/?parseTime=true")
+	db, err := sql.Open("mysql", os.Getenv("DSN"))
 	if err != nil {
 		return errors.New("Failed to connect to database: " + err.Error())
 	}
