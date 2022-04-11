@@ -86,6 +86,29 @@ func setup() error {
 		return c.JSON(user)
 	})
 
+	app.Post("/logout", func(c *fiber.Ctx) error {
+		var session struct {
+			Token string `json:"session_token"`
+		}
+		err := c.BodyParser(&session)
+		if err != nil {
+			msg := "error parsing session: " + err.Error()
+			fmt.Println(msg)
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error": msg,
+			})
+		}
+		err = users.Logout(session.Token, client)
+		if err != nil {
+			msg := "error logging out user: " + err.Error()
+			fmt.Println(msg)
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": msg,
+			})
+		}
+		return c.SendStatus(fiber.StatusOK)
+	})
+
 	app.Post("/signup", func(c *fiber.Ctx) error {
 		var user users.User
 		err := c.BodyParser(&user)
