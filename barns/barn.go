@@ -6,14 +6,15 @@ import (
 )
 
 type Barn struct {
-	ID   int64  `json:"id"`
-	Name string `json:"name"`
+	ID        int64  `json:"id"`
+	Name      string `json:"name"`
+	IsPrimary bool   `json:"is_primary,omitempty"`
 }
 
 type Owner struct {
 	ID     int64  `json:"id"`
 	Name   string `json:"name"`
-	UserID string `json:"user_id"`
+	UserID int64  `json:"user_id"`
 }
 
 type sqlOwner struct {
@@ -22,12 +23,13 @@ type sqlOwner struct {
 }
 
 type BarnOwner struct {
-	ID      int64 `json:"id"`
-	BarnID  int64 `json:"barn_id"`
-	OwnerID int64 `json:"owner_id"`
+	ID            int64 `json:"id"`
+	BarnID        int64 `json:"barn_id"`
+	OwnerID       int64 `json:"owner_id"`
+	IsPrimaryBarn bool  `json:"is_primary_barn"`
 }
 
-func (b *Barn) Save(userID string, db *sql.DB) error {
+func (b *Barn) Save(userID int64, db *sql.DB) error {
 	query := "insert into barns (name) values (?)"
 	result, err := db.Exec(query, b.Name)
 	if err != nil {
@@ -51,7 +53,7 @@ func (b *Barn) Save(userID string, db *sql.DB) error {
 }
 
 func GetBarnsByUserID(userID string, db *sql.DB) ([]*Barn, error) {
-	query := "select b.id, b.name from barns b join barn_owners bo on b.id = bo.barn_id join owners o on bo.owner_id = o.id where o.user_id = ?"
+	query := "select b.id, b.name, bo.is_primary_barn from barns b join barn_owners bo on b.id = bo.barn_id join owners o on bo.owner_id = o.id where o.user_id = ?"
 	rows, err := db.Query(query, userID)
 	if err != nil {
 		return nil, errors.New("failed to select barns from database: " + err.Error())
@@ -60,7 +62,7 @@ func GetBarnsByUserID(userID string, db *sql.DB) ([]*Barn, error) {
 	var barns []*Barn
 	for rows.Next() {
 		var b Barn
-		err := rows.Scan(&b.ID, &b.Name)
+		err := rows.Scan(&b.ID, &b.Name, &b.IsPrimary)
 		if err != nil {
 			return nil, errors.New("failed to scan row: " + err.Error())
 		}
@@ -69,7 +71,7 @@ func GetBarnsByUserID(userID string, db *sql.DB) ([]*Barn, error) {
 	return barns, nil
 }
 
-func HandleOwner(userID string, db *sql.DB) (*Owner, error) {
+func HandleOwner(userID int64, db *sql.DB) (*Owner, error) {
 	var owner Owner
 	owner.UserID = userID
 	query := "select id, name from owners where user_id = ?"

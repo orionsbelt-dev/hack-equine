@@ -151,17 +151,32 @@ func setup() error {
 		return c.JSON(*user)
 	})
 
+	app.Use(func(c *fiber.Ctx) error {
+		sessionToken := c.Get("x-session-token")
+		session := users.Session{
+			Token: sessionToken,
+		}
+		err = session.Validate(client)
+		if err != nil {
+			msg := "error validating session: " + err.Error()
+			fmt.Println(msg)
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+				"error": msg,
+			})
+		}
+		return c.Next()
+	})
+
 	app.Post("/barn", func(c *fiber.Ctx) error {
-		logger := c.Context().Logger()
 		type barnRequest struct {
 			Name   string `json:"name"`
-			UserID string `json:"user_id"`
+			UserID int64  `json:"user_id"`
 		}
 		var req barnRequest
 		err := c.BodyParser(&req)
 		if err != nil {
 			msg := "Failed to parse request body: " + err.Error()
-			logger.Printf(msg)
+			fmt.Println(msg)
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 				"error": msg,
 			})
@@ -172,7 +187,7 @@ func setup() error {
 		err = barn.Save(req.UserID, db)
 		if err != nil {
 			msg := "Failed to save barn: " + err.Error()
-			logger.Printf(msg)
+			fmt.Println(msg)
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"error": msg,
 			})

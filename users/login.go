@@ -90,7 +90,7 @@ func (a *UserAuth) AuthenticatePasscode(client *stytchapi.API, db *sql.DB) (*Use
 	params := &stytch.OTPsAuthenticateParams{
 		MethodID:               u.stytchMethodID.String,
 		Code:                   a.Passcode,
-		SessionDurationMinutes: 7 * 24 * 60,
+		SessionDurationMinutes: sessionDurationMinutes,
 	}
 	resp, err := client.OTPs.Authenticate(params)
 	if err != nil {
